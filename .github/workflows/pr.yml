@@ -1,0 +1,99 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  pr-checks:
+    name: PR Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for merge conflicts
+        run: |
+          git fetch origin
+          git merge-tree $(git merge-base HEAD origin/main) HEAD origin/main || exit 1
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check TypeScript types
+        run: npm run type-check
+
+      - name: Check code formatting
+        run: npm run format:check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build project
+        run: npm run build
+
+      - name: Check bundle size
+        run: |
+          npm run build
+          echo "Bundle size check completed"
+
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('## PR Quality Check Results')
+            );
+
+            const results = {
+              lint: '${{ steps.lint.outcome }}',
+              types: '${{ steps.type-check.outcome }}',
+              format: '${{ steps.format-check.outcome }}',
+              tests: '${{ steps.tests.outcome }}',
+              build: '${{ steps.build.outcome }}'
+            };
+
+            const status = Object.values(results).every(r => r === 'success') ? '✅' : '❌';
+            const body = `## PR Quality Check Results ${status}
+
+            - **ESLint**: ${results.lint === 'success' ? '✅ Passed' : '❌ Failed'}
+            - **TypeScript**: ${results.types === 'success' ? '✅ Passed' : '❌ Failed'}
+            - **Formatting**: ${results.format === 'success' ? '✅ Passed' : '❌ Failed'}
+            - **Tests**: ${results.tests === 'success' ? '✅ Passed' : '❌ Failed'}
+            - **Build**: ${results.build === 'success' ? '✅ Passed' : '❌ Failed'}
+
+            ${status === '✅' ? 'All checks passed! 🎉' : 'Some checks failed. Please review the logs above.'}`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }

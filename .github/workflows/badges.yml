@@ -1,0 +1,58 @@
+name: Generate Badges
+
+on:
+  workflow_run:
+    workflows: ['CI/CD Pipeline']
+    types:
+      - completed
+
+jobs:
+  generate-badges:
+    name: Update Badges
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update README badges
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const readmePath = path.join(process.cwd(), 'README.md');
+            let readmeContent = fs.readFileSync(readmePath, 'utf8');
+
+            // Define badges
+            const badges = [
+              '![CI/CD Pipeline](https://github.com/cyberbay-tech/cyberscan-google-smtp-email/workflows/CI/CD%20Pipeline/badge.svg)',
+              '![Release](https://github.com/cyberbay-tech/cyberscan-google-smtp-email/workflows/Release/badge.svg)',
+              '![PR Checks](https://github.com/cyberbay-tech/cyberscan-google-smtp-email/workflows/Pull%20Request%20Checks/badge.svg)',
+              '![Documentation](https://github.com/cyberbay-tech/cyberscan-google-smtp-email/workflows/Documentation%20Validation/badge.svg)',
+              '![npm version](https://img.shields.io/npm/v/cyberscan-google-smtp-email.svg)',
+              '![npm downloads](https://img.shields.io/npm/dm/cyberscan-google-smtp-email.svg)',
+              '![License](https://img.shields.io/npm/l/cyberscan-google-smtp-email.svg)',
+              '![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)',
+              '![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)'
+            ];
+
+            // Check if badges already exist
+            if (!readmeContent.includes('![CI/CD Pipeline]')) {
+              // Insert badges after the title
+              const titleEnd = readmeContent.indexOf('\n', readmeContent.indexOf('# '));
+              const badgeSection = '\n\n' + badges.join(' ') + '\n\n';
+              readmeContent = readmeContent.slice(0, titleEnd) + badgeSection + readmeContent.slice(titleEnd);
+              
+              fs.writeFileSync(readmePath, readmeContent);
+              
+              // Commit the changes
+              const { execSync } = require('child_process');
+              execSync('git config --local user.email "action@github.com"');
+              execSync('git config --local user.name "GitHub Action"');
+              execSync('git add README.md');
+              execSync('git commit -m "Update README badges"');
+              execSync('git push');
+            }

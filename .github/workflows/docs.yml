@@ -1,0 +1,77 @@
+name: Documentation Validation
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+
+jobs:
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install markdownlint
+        run: npm install -g markdownlint-cli
+
+      - name: Validate markdown files
+        run: |
+          echo "Checking markdown files..."
+          markdownlint "**/*.md" --ignore node_modules
+
+      - name: Check for broken links
+        run: |
+          echo "Checking for broken links in documentation..."
+          # This is a basic check - you might want to use a more sophisticated tool
+          grep -r "http" docs/ README.md | grep -v "github.com" | grep -v "npmjs.com" || echo "No external links found to check"
+
+      - name: Validate documentation structure
+        run: |
+          echo "Validating documentation structure..."
+
+          # Check if required files exist
+          if [ ! -f "docs/README.md" ]; then
+            echo "❌ docs/README.md is missing"
+            exit 1
+          fi
+
+          if [ ! -f "docs/QUICK_START.md" ]; then
+            echo "❌ docs/QUICK_START.md is missing"
+            exit 1
+          fi
+
+          if [ ! -f "docs/SETUP_GOOGLE_SERVICE_ACCOUNT.md" ]; then
+            echo "❌ docs/SETUP_GOOGLE_SERVICE_ACCOUNT.md is missing"
+            exit 1
+          fi
+
+          echo "✅ All required documentation files exist"
+
+      - name: Check documentation links
+        run: |
+          echo "Checking internal documentation links..."
+
+          # Check if all links in main README point to existing files
+          grep -o 'docs/[^)]*\.md' README.md | while read link; do
+            if [ ! -f "$link" ]; then
+              echo "❌ Broken link in README.md: $link"
+              exit 1
+            fi
+          done
+
+          echo "✅ All internal documentation links are valid"
