@@ -65,12 +65,6 @@ export async function sendEmailWithAttachments(options: {
         <hr>
         ${linksHTML}
         <hr>
-        <p><em>Best regards,<br>Email Service Team</em></p>
-      `;
-    } else if (!htmlContent.includes('Best regards')) {
-      htmlContent += `
-        <hr>
-        <p><em>Best regards,<br>Email Service Team</em></p>
       `;
     }
 

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
-dotenv.config();
+const env = process.env['NODE_ENV'] || 'development';
+dotenv.config({ path: `${env}.env` });
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -19,8 +20,12 @@ const config = {
     defaultTo: process.env['DEFAULT_TO_EMAIL'] || '',
   },
   googleDrive: {
-    serviceAccountCredentials:
-      process.env['GOOGLE_SERVICE_ACCOUNT_CREDENTIALS'] || '',
+    serviceAccountCredentials: process.env['GOOGLE_SERVICE_ACCOUNT_CREDENTIALS']
+      ? Buffer.from(
+          process.env['GOOGLE_SERVICE_ACCOUNT_CREDENTIALS'],
+          'base64'
+        ).toString('utf-8')
+      : '',
     folderId: process.env['GOOGLE_DRIVE_FOLDER_ID'] || '',
   },
   aws: {

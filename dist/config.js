@@ -4,7 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const env = process.env['NODE_ENV'] || 'development';
+dotenv_1.default.config({ path: `${env}.env` });
 function requireEnv(name) {
     const value = process.env[name];
     if (!value)
@@ -23,7 +24,9 @@ const config = {
         defaultTo: process.env['DEFAULT_TO_EMAIL'] || '',
     },
     googleDrive: {
-        serviceAccountCredentials: process.env['GOOGLE_SERVICE_ACCOUNT_CREDENTIALS'] || '',
+        serviceAccountCredentials: process.env['GOOGLE_SERVICE_ACCOUNT_CREDENTIALS']
+            ? Buffer.from(process.env['GOOGLE_SERVICE_ACCOUNT_CREDENTIALS'], 'base64').toString('utf-8')
+            : '',
         folderId: process.env['GOOGLE_DRIVE_FOLDER_ID'] || '',
     },
     aws: {
